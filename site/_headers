@@ -1,0 +1,20 @@
+# Cloudflare Pages response headers. Copied into dist/ by release.sh assemble.
+# Pages merges every block whose path matches, top to bottom.
+
+# Firmware is public. CORS lets a configurator on another host (transit.kunicki.app
+# during the move, or anyone's fork) read the manifest and flash these files.
+/firmware/*
+  Access-Control-Allow-Origin: *
+
+# The manifests are the ONLY mutable files: they say which build is current.
+# A cached one keeps devices on the previous release, or offers it as "latest".
+/firmware/manifest.json
+  Cache-Control: no-store
+/firmware/beta/manifest.json
+  Cache-Control: no-store
+
+# Every binary's name carries its version and is never reused, so it can be
+# cached forever -- a new build is a URL nothing has cached yet.
+/firmware/*.bin
+  Cache-Control: public, max-age=31536000, immutable
+  Content-Type: application/octet-stream

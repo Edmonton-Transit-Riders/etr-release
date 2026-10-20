@@ -1,0 +1,5 @@
+# Cloudflare credentials -- never committed. See README "Credentials".
+.env
+# Build output, recreated by every assemble.
+dist/
+work/
