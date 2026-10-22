@@ -1,0 +1,8 @@
+version:        v3.3.2-etr.3
+built:          2026-10-22T03:55:39Z on piccadilly
+site_url:       https://updates.edmontontransitriders.org
+firmware repo:  dd3d108a063108785ff6edb89688c4a7208ffac7 (badge-layout)
+component repo: 0073c94010a9f8710a8e69fe3103d6e84b9176fe (badge-layout)
+esphome image:  ghcr.io/esphome/esphome:2026.9.1
+factory md5:    f8f86bebd488ebfd312e7c331d9b16d1
+ota md5:        3d2fa53043509d70b29b3a777bb3cdbd

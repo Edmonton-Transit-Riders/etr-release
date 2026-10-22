@@ -6,6 +6,7 @@
 #   ./release.sh promote <version> beta|stable  point a channel at a release
 #   ./release.sh assemble                       build dist/ (no network writes)
 #   ./release.sh deploy                         assemble, upload, verify live
+#   ./release.sh publish                        assemble, swap into PUBLISH_DIR, verify live
 #   ./release.sh status                         channels here vs. live site
 #
 # Versions look like v3.3.2-etr.3: upstream's release it is based on, then
@@ -256,6 +257,8 @@ verify_live() {
   echo "== verifying $SITE_URL"
   local ok=1 rel want got
   for rel in manifest.json beta/manifest.json; do
+    # Beta-only (nothing promoted to stable yet) has no stable manifest.
+    [ -f "$DIST/firmware/$rel" ] || { echo "  skip $rel (channel empty)"; continue; }
     want="$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["version"])' "$DIST/firmware/$rel")"
     # The edge can take a few seconds to see a new deployment.
     for _ in 1 2 3 4 5 6; do
@@ -276,6 +279,28 @@ verify_live() {
   echo "Deployed. Commit channels/ and releases/ now."
 }
 
+# Self-hosted alternative to `deploy` (2026-10-21): updates.edmontontransitriders.org
+# is a hostname on ETR's tunnel into piccadilly, and nginx serves PUBLISH_DIR/current.
+# Each publish lands in a fresh dated directory and `current` is re-pointed with
+# one rename, so a device never reads a half-copied manifest. Older trees are kept
+# (pruned to the newest 5); every .bin is also in releases/, so nothing is lost.
+cmd_publish() {
+  [ -n "${PUBLISH_DIR:-}" ] || die "PUBLISH_DIR is not set in channel.conf"
+  cmd_assemble
+  local stamp tree
+  stamp="$(date -u +%Y%m%dT%H%M%SZ)"; tree="$PUBLISH_DIR/site-$stamp"
+  mkdir -p "$PUBLISH_DIR"
+  cp -a "$DIST" "$tree"
+  rm -f "$tree/_headers"   # Pages-only; nginx sets the same headers itself
+  chmod -R a+rX "$tree"
+  ln -sfn "site-$stamp" "$PUBLISH_DIR/current.tmp"
+  mv -T "$PUBLISH_DIR/current.tmp" "$PUBLISH_DIR/current"
+  echo "== published $tree"
+  # shellcheck disable=SC2012
+  ls -1d "$PUBLISH_DIR"/site-* | sort | head -n -5 | xargs -r rm -rf
+  verify_live
+}
+
 cmd_status() {
   echo "here:  stable=$(channel_version stable || true)  beta=$(channel_version beta || true)"
   if [ -n "$SITE_URL" ]; then
@@ -294,6 +319,7 @@ case "${1:-}" in
   promote)  shift; cmd_promote "$@" ;;
   assemble) cmd_assemble ;;
   deploy)   cmd_deploy ;;
+  publish)  cmd_publish ;;
   status)   cmd_status ;;
-  *) sed -n '2,9p' "$0"; exit 1 ;;
+  *) sed -n '2,10p' "$0"; exit 1 ;;
 esac

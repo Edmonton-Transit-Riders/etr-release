@@ -2,7 +2,15 @@
 
 This repo publishes the Edmonton Transit Riders build of the Transit Tracker:
 the web configurator **and** the firmware that devices auto-update from, as one
-Cloudflare Pages site in ETR's Cloudflare account.
+static site at **https://updates.edmontontransitriders.org**.
+
+**Where it is hosted (since 2026-10-21):** piccadilly, not Cloudflare Pages.
+`updates.edmontontransitriders.org` is a route on ETR's Cloudflare Tunnel
+(`web_cloudflared_etr`) to `web_nginx`, which serves
+`~/docker/web/etr-updates/current`. Publish with `./release.sh publish` wherever
+this README says `deploy`. The Pages path (`deploy`, the one-time setup below)
+still works unchanged if the site ever moves there: `SITE_URL` is the same
+either way, which is what matters to devices.
 
 Everything needed to take this over is in this repo plus the three source repos
 below. Nothing depends on the machine it was built on except the paths in
@@ -98,6 +106,11 @@ git add -A && git commit -m "v3.3.2-etr.4 to beta"
 ./release.sh deploy
 git add -A && git commit -m "v3.3.2-etr.4 to stable"
 ```
+
+`publish` (self-hosted) assembles `dist/`, copies it to a new
+`PUBLISH_DIR/site-<timestamp>/`, re-points `current` at it with one rename (a
+device never reads a half-written manifest), keeps the newest 5 trees, then runs
+the same live checks as `deploy`.
 
 `deploy` assembles `dist/` (configurator build + every release ever made + the
 two manifests + `_headers` + `etr-defaults.json`), checks it, uploads it with
