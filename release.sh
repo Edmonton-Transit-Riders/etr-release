@@ -128,7 +128,7 @@ cmd_promote() {
   local was; was="$(channel_version "$channel")"
   echo "$version" > "$CHANNELS/$channel"
   echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) $channel ${was:-none} -> $version" >> "$CHANNELS/history.log"
-  echo "$channel: ${was:-none} -> $version. Run ./release.sh deploy to publish, then commit."
+  echo "$channel: ${was:-none} -> $version. Run ./release.sh publish (or deploy, for Pages), then commit."
 }
 
 write_manifest() {
