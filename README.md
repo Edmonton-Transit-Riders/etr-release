@@ -16,6 +16,16 @@ Everything needed to take this over is in this repo plus the three source repos
 below. Nothing depends on the machine it was built on except the paths in
 `channel.conf`.
 
+## Licensing
+
+The firmware binaries under `releases/` are built from the three source repos
+below and carry their licences: the firmware YAML is Eastside Urbanism's
+(CC BY-NC-SA 4.0), the display component and configurator are TJ Horner's (MIT),
+and ESPHome's C++ runtime compiled into every binary is GPLv3. Edmonton Transit
+Riders uses them with the upstream authors' permission, including for other
+Canadian transit advocacy organizations. Each release's `SOURCE.txt` names the
+exact commits it was built from, which is how anyone can get the matching source.
+
 ## The pieces
 
 | Repo | Branch | What it is |
@@ -120,6 +130,27 @@ what it uploaded. `./release.sh assemble` does everything except upload.
 
 The configurator is rebuilt on **every** deploy from the configurator repo's
 current commit, so a configurator-only change is just `./release.sh deploy`.
+
+### The development site (ttdev)
+
+https://ttdev.edmontontransitriders.org is the public release log: what stable
+and beta serve, every release with its notes and SHA-256s, changelogs for the
+configurator and feeds, and a live count of connected trackers. It is generated
+by `devsite/build.py` from `releases/`, `channels/` and `changelog/`, so it
+cannot disagree with what devices get.
+
+- `publish` rebuilds it automatically at the end.
+- After editing only `changelog/configurator.md` or `changelog/feeds.md`, run
+  `./release.sh devsite`. Write those entries for people who run a tracker, never
+  paste commit messages (they name internal hosts and paths).
+- Withdrawing a release: put the reason in `releases/<v>/WITHDRAWN` (one line,
+  shown on the page), then `./release.sh devsite`. Withdrawing does not change
+  any channel; promote something else for that.
+- `CONTACT_EMAIL` and `GITHUB_ORG` in `channel.conf` switch on the report
+  address and source links.
+- The live count is `live/counts.json` beside the published trees, written
+  each minute by `~/docker/web/ttdash/collect.py`: totals per firmware version,
+  nothing else.
 
 ### Rollback
 

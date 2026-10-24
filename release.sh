@@ -7,6 +7,7 @@
 #   ./release.sh assemble                       build dist/ (no network writes)
 #   ./release.sh deploy                         assemble, upload, verify live
 #   ./release.sh publish                        assemble, swap into PUBLISH_DIR, verify live
+#   ./release.sh devsite                        rebuild + publish the ttdev site only
 #   ./release.sh status                         channels here vs. live site
 #
 # Versions look like v3.3.2-etr.3: upstream's release it is based on, then
@@ -299,6 +300,35 @@ cmd_publish() {
   # shellcheck disable=SC2012
   ls -1d "$PUBLISH_DIR"/site-* | sort | head -n -5 | xargs -r rm -rf
   verify_live
+  cmd_devsite
+}
+
+# The public development site (ttdev): release log, beta status, changelogs,
+# generated from releases/, channels/ and changelog/ so it can never disagree
+# with what devices are served. Same atomic swap as `publish`; live/ (the
+# connected count from ttdash/collect.py) sits beside the trees and is kept.
+cmd_devsite() {
+  [ -n "${DEV_PUBLISH_DIR:-}" ] || { echo "== devsite skipped (DEV_PUBLISH_DIR unset)"; return 0; }
+  local out="$HERE/dist-dev" stamp tree
+  SITE_URL="$SITE_URL" DEV_SITE_URL="${DEV_SITE_URL:-}" CONTACT_EMAIL="${CONTACT_EMAIL:-}" \
+    GITHUB_ORG="${GITHUB_ORG:-}" python3 "$HERE/devsite/build.py" "$out" \
+    || die "devsite build failed; ttdev left as it was (the firmware channel, if just published, is live and fine)"
+  stamp="$(date -u +%Y%m%dT%H%M%SZ)"; tree="$DEV_PUBLISH_DIR/site-$stamp"
+  mkdir -p "$DEV_PUBLISH_DIR/live"
+  cp -a "$out" "$tree"
+  chmod -R a+rX "$tree"
+  ln -sfn "site-$stamp" "$DEV_PUBLISH_DIR/current.tmp"
+  mv -T "$DEV_PUBLISH_DIR/current.tmp" "$DEV_PUBLISH_DIR/current"
+  # shellcheck disable=SC2012
+  ls -1d "$DEV_PUBLISH_DIR"/site-* | sort | head -n -5 | xargs -r rm -rf
+  echo "== devsite published $tree"
+  if [ -n "${DEV_SITE_URL:-}" ]; then
+    local want got
+    want="$(python3 -c 'import json,sys;d=json.load(open(sys.argv[1]));print(d["channels"].get("stable",{}).get("version",""))' "$out/releases.json")"
+    got="$(curl -fsS -4 "$DEV_SITE_URL/releases.json" 2>/dev/null | python3 -c 'import json,sys;d=json.load(sys.stdin);print(d["channels"].get("stable",{}).get("version",""))' 2>/dev/null || true)"
+    if [ "$got" = "$want" ]; then echo "  ok   $DEV_SITE_URL shows stable=$got"
+    else echo "  WARN $DEV_SITE_URL shows stable='$got', expected '$want' (firmware channel is unaffected)"; fi
+  fi
 }
 
 cmd_status() {
@@ -320,6 +350,7 @@ case "${1:-}" in
   assemble) cmd_assemble ;;
   deploy)   cmd_deploy ;;
   publish)  cmd_publish ;;
+  devsite)  cmd_devsite ;;
   status)   cmd_status ;;
   *) sed -n '2,10p' "$0"; exit 1 ;;
 esac
