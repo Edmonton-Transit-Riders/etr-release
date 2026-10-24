@@ -241,6 +241,8 @@ nav ul{max-width:980px;margin:0 auto;padding:0 8px;list-style:none;display:flex;
 nav a{display:block;padding:10px 10px;color:var(--muted);text-decoration:none;font-size:.9rem;border-bottom:2px solid transparent}
 nav a:hover{color:var(--text)}
 nav a[aria-current=page]{color:#fff;border-bottom-color:var(--etr)}
+nav li.ext{margin-left:auto}nav li.ext a,nav li.ext~li a{display:inline-flex;align-items:center;gap:5px}
+nav .bi{width:.75em;height:.75em;opacity:.7}
 main{max-width:980px;margin:0 auto;padding:8px 16px 40px}
 h2{font-size:1.15rem;margin:30px 0 10px}
 h3{font-size:1rem;margin:18px 0 6px}
@@ -287,7 +289,7 @@ ol.steps{padding-left:1.3em}ol.steps li{margin:6px 0}
 footer{border-top:1px solid var(--line);margin-top:30px}
 footer .in{max-width:980px;margin:0 auto;padding:18px 16px 28px;color:var(--muted);font-size:.84rem}
 footer p{margin:4px 0}
-@media (max-width:560px){.bar .rule,.bar .sub{display:none}.feed li{grid-template-columns:1fr}.rel{padding:2px 14px 12px}}
+@media (max-width:560px){.bar .rule,.bar .sub{display:none}nav li.ext,nav li.ext~li{display:none}.feed li{grid-template-columns:1fr}.rel{padding:2px 14px 12px}}
 """
 
 
@@ -298,7 +300,8 @@ def page(name, title, body, counts_js=False):
     credits = ('Built on <a href="https://github.com/EastsideUrbanism/transit-tracker">Transit Tracker</a> '
                'by Eastside Urbanism and <a href="https://github.com/tjhorner">TJ Horner</a>, used with their permission. '
                'ETR’s changes were developed with AI assistance (Claude) and are tested on ETR hardware.')
-    extra = []
+    extra = [f'<a href="https://edmontontransitriders.org/">{icon("box-arrow-up-right")} edmontontransitriders.org</a>',
+             f'<a href="https://edmontontransitriders.org/transittracker/">{icon("box-arrow-up-right")} About Transit Tracker</a>']
     if GITHUB_ORG:
         extra.append(f'<a href="https://github.com/{esc(GITHUB_ORG)}">{icon("github")} Source on GitHub</a>')
     if CONTACT_EMAIL:
@@ -306,6 +309,10 @@ def page(name, title, body, counts_js=False):
     extra.append(f'<a href="/feed.xml">{icon("rss")} Atom feed</a>')
     extra.append('<a href="/releases.json">releases.json</a>')
     canonical = f'<link rel="canonical" href="{DEV_SITE_URL}/{"" if name == "index" else name}">' if DEV_SITE_URL else ""
+    nav += ('<li class="ext"><a href="https://edmontontransitriders.org/transittracker/">About Transit Tracker '
+            f'{icon("box-arrow-up-right")}</a></li>'
+            '<li><a href="https://edmontontransitriders.org/">Edmonton Transit Riders '
+            f'{icon("box-arrow-up-right")}</a></li>')
     return f"""<!doctype html>
 <html lang="en-CA">
 <head>
@@ -479,8 +486,9 @@ def build(out):
         for s in stream[:10])
     overview = f"""
 <p class="lede" style="margin-top:22px">Transit Tracker is an LED sign that shows live departure times for nearby
-stops. Edmonton Transit Riders builds and runs its own version for signs in homes, shops and community spaces.
-This page tracks what’s being released, what’s in testing, and what changed.</p>
+stops. <a href="https://edmontontransitriders.org/">Edmonton Transit Riders</a> builds and runs its own version
+for signs in homes, shops and community spaces (<a href="https://edmontontransitriders.org/transittracker/">find out
+more or get one</a>). This page tracks what’s being released, what’s in testing, and what changed.</p>
 
 <script type="application/json" id="channels">{json.dumps(channels)}</script>
 <div class="grid">
