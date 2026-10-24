@@ -152,6 +152,13 @@ updates itself: flash it over USB or from its own web page. The build refuses
 if two models come out byte-identical (a geometry override that silently did
 not apply).
 
+`./release.sh devcat` (run automatically after `bench` and `publish`) writes
+`bench/catalog.json`: every model with its stable, beta and bench builds. The
+**dev configurator** on piccadilly reads it: `devconfig` in `~/docker/web`,
+tailnet-only at https://piccadilly.gibbon-walleye.ts.net:8224 (USB flashing)
+and http://piccadilly:8225 (configuring trackers over the LAN). Its /setup
+offers a model picker, then only that model's builds.
+
 When a model joins the channel it gets its own manifest at
 `/firmware/<model>/manifest.json` (never a bare `2x1`/`2x2`/`2x3` path: see
 "Rules that keep devices safe"). `p25-2x1` keeps `/firmware/manifest.json`

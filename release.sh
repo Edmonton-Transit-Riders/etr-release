@@ -9,6 +9,7 @@
 #   ./release.sh publish                        assemble, swap into PUBLISH_DIR, verify live
 #   ./release.sh devsite                        rebuild + publish the ttdev site only
 #   ./release.sh bench   <model>...             unpublished test builds per hardware model
+#   ./release.sh devcat                         rewrite the dev configurator's build catalogue
 #   ./release.sh status                         channels here vs. live site
 #
 # Versions look like v3.3.2-etr.3: upstream's release it is based on, then
@@ -55,6 +56,21 @@ declare -A MODEL_YAML=(
   [p2-192x64]=transit-tracker-p2.yaml
   [p2-128x64]=transit-tracker-p2-128x64.yaml
 )
+# Shown in the dev configurator's model picker (devcat).
+declare -A MODEL_LABEL=(
+  [p25-2x1]="P2.5 2x1 (128x32)"
+  [p25-2x2]="P2.5 2x2 (128x64)"
+  [p2-192x64]="P2 192x64 mixed chain"
+  [p2-128x64]="P2 128x64 single board"
+)
+declare -A MODEL_NOTE=(
+  [p25-2x1]="The released model. Also the double-sided sign, whose faces are wired in parallel."
+  [p25-2x2]="Four P2.5 panels. Untested on glass: check panel order (the bottom row) and flicker."
+  [p2-192x64]="128x64 + 64x64 boards. The colour fix assumes the 64x64 board is on the LEFT."
+  [p2-128x64]="One 128x64 P2 board, no colour fix."
+)
+MODEL_ORDER=(p25-2x1 p25-2x2 p2-192x64 p2-128x64)
+
 yaml_name() {  # first `name:` in the file = the substitutions entry
   sed -nE '0,/^[[:space:]]+name:/s/^[[:space:]]+name:[[:space:]]*"?([^"]*)"?.*/\1/p' "$FIRMWARE_REPO/firmware/$1"
 }
@@ -317,6 +333,7 @@ cmd_publish() {
   ls -1d "$PUBLISH_DIR"/site-* | sort | head -n -5 | xargs -r rm -rf
   verify_live
   cmd_devsite
+  cmd_devcat
 }
 
 # The public development site (ttdev): release log, beta status, changelogs,
@@ -402,6 +419,43 @@ SRC
   fi
   echo "== bench builds in $HERE/bench/:"
   printf '%s' "$sums" | sed 's/^/   /'
+  cmd_devcat
+}
+
+# The dev configurator's catalogue (bench/catalog.json): every model, and for
+# each the builds it may flash -- stable and beta from channels/ (the released
+# model only, served by the update site) plus whatever is in bench/<model>/.
+# The dev configurator serves bench/ at /bench/, so bench URLs are relative.
+cmd_devcat() {
+  mkdir -p "$HERE/bench"
+  local args=() m
+  for m in "${MODEL_ORDER[@]}"; do args+=("$m" "${MODEL_LABEL[$m]}" "${MODEL_NOTE[$m]}"); done
+  python3 - "$HERE" "$SITE_URL" "$(channel_version stable)" "$(channel_version beta)" "${args[@]}" <<'PY'
+import glob, json, os, sys
+here, site, stable, beta = sys.argv[1:5]
+rest = sys.argv[5:]
+models = [{"id": rest[i], "label": rest[i + 1], "note": rest[i + 2]} for i in range(0, len(rest), 3)]
+builds = []
+# Only p25-2x1 is on the channel today. When another model joins, its stable
+# and beta come from its own manifest path, and this grows a per-model lookup.
+for kind, v in (("stable", stable), ("beta", beta)):
+    if v:
+        builds.append({"model": "p25-2x1", "kind": kind, "version": v,
+                       "factoryBinUrl": f"{site}/firmware/firmware-{v}.factory.bin", "built": None})
+for m in models:
+    for src in sorted(glob.glob(os.path.join(here, "bench", m["id"], "SOURCE.txt"))):
+        kv = dict(l.split(":", 1) for l in open(src).read().splitlines() if ":" in l)
+        ver = kv["version"].split()[0]
+        builds.append({"model": m["id"], "kind": "bench", "version": ver,
+                       "factoryBinUrl": f"/bench/{m['id']}/firmware-{ver}.factory.bin",
+                       "built": kv.get("built", "").strip() or None})
+out = os.path.join(here, "bench", "catalog.json")
+with open(out + ".tmp", "w") as f:
+    json.dump({"generated": __import__("datetime").datetime.now(__import__("datetime").timezone.utc)
+               .strftime("%Y-%m-%dT%H:%M:%SZ"), "models": models, "builds": builds}, f, indent=2)
+os.replace(out + ".tmp", out)
+print(f"== dev catalogue: {len(builds)} builds across {len(models)} models -> {out}")
+PY
 }
 
 case "${1:-}" in
@@ -412,6 +466,7 @@ case "${1:-}" in
   publish)  cmd_publish ;;
   devsite)  cmd_devsite ;;
   bench)    shift; cmd_bench "$@" ;;
+  devcat)   cmd_devcat ;;
   status)   cmd_status ;;
   *) sed -n '2,10p' "$0"; exit 1 ;;
 esac
