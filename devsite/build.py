@@ -533,6 +533,32 @@ Both channels serve exactly the same file; moving a build to stable doesn’t re
 Transit Tracker <code>v3.3.2</code>, ETR build 4. The ETR number only ever goes up, even when the upstream version changes
 (<code>v3.3.2-etr.7</code> could be followed by <code>v3.4.0-etr.8</code>). Builds made outside the release process report
 <code>dev</code> and never update themselves.</div>
+<h3 id="how-a-build-gets-here">How a build gets here</h3>
+<div class="grid steps3">
+  <div class="card"><div class="k">{icon("cpu")} 1. Bench</div>
+    <p class="small" style="margin:6px 0">On test units at ETR, installed by hand. Never offered to anyone. To leave the bench,
+    a build must pass all of these on the hardware it is for:</p>
+    <ul class="small" style="margin:0;padding-left:1.1em">
+      <li>Shows departures with correct colours and panel order</li>
+      <li>No clipped letters and no visible flicker</li>
+      <li>Settings survive a push from the configurator and a power cycle</li>
+      <li>Updating from the previous release works and keeps settings</li>
+      <li>Runs 48 hours without restarting</li>
+    </ul></div>
+  <div class="card beta"><div class="k">{icon("bug")} 2. Beta</div>
+    <p class="small" style="margin:6px 0">Installed automatically on trackers whose owners chose the
+    <a href="/beta">Beta channel</a>. To move on, a build needs:</p>
+    <ul class="small" style="margin:0;padding-left:1.1em">
+      <li>At least 7 days on beta</li>
+      <li>At least 2 to 3 trackers running it</li>
+      <li>No problem reports and no unexplained disconnects</li>
+    </ul></div>
+  <div class="card stable"><div class="k">{icon("check-circle-fill")} 3. Stable</div>
+    <p class="small" style="margin:6px 0">Every tracker, including signs in businesses that nobody watches day to day.
+    If a problem turns up, the previous stable build goes straight back out; trackers reinstall it on their next check.</p></div>
+</div>
+<p class="small muted">Any exception to these steps is stated in that release’s notes. For a new hardware model with no
+trackers in the field yet, ETR’s own test units stand in for beta testers.</p>
 <div class="links">
   <a href="{esc(SITE_URL)}/firmware/manifest.json">{icon("box-arrow-up-right")} Stable manifest</a>
   <a href="{esc(SITE_URL)}/firmware/beta/manifest.json">{icon("box-arrow-up-right")} Beta manifest</a>
