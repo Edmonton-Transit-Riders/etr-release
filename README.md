@@ -203,8 +203,10 @@ Every device in the field has `SITE_URL` compiled in. To move:
 
 ## Handover checklist
 
-- [ ] Push the three source repos and this one to a GitHub organisation ETR
-      controls, and add maintainers.
+- [x] Push the three source repos and this one to a GitHub organisation ETR
+      controls: https://github.com/Edmonton-Transit-Riders (2026-10-23; the
+      forks' default branch is `badge-layout`, remote name `etr` locally).
+- [ ] Add a second owner to the GitHub organisation.
 - [ ] In the `transit-tracker` fork, disable upstream's GitHub Actions
       (`release-firmware.yml`): it would publish to upstream's paths, not here.
 - [ ] Update the three repo paths in `channel.conf` to wherever they are cloned.
