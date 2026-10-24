@@ -8,6 +8,7 @@
 #   ./release.sh deploy                         assemble, upload, verify live
 #   ./release.sh publish                        assemble, swap into PUBLISH_DIR, verify live
 #   ./release.sh devsite                        rebuild + publish the ttdev site only
+#   ./release.sh bench   <model>...             unpublished test builds per hardware model
 #   ./release.sh status                         channels here vs. live site
 #
 # Versions look like v3.3.2-etr.3: upstream's release it is based on, then
@@ -42,6 +43,21 @@ DIST="$HERE/dist"
 VERSION_RE='^v[0-9]+\.[0-9]+\.[0-9]+-etr\.[0-9]+$'
 
 die() { echo "release: $*" >&2; exit 1; }
+
+# Hardware models -> firmware YAML. Panel geometry is fixed at compile time, so
+# each model is its own binary. Every YAML sets its own `name:` substitution,
+# which is also its build dir, so building one never overwrites another.
+# p25-2x1 is the released channel build (also the double-sided sign, whose two
+# faces are wired in parallel and look like one 2x1 to the controller).
+declare -A MODEL_YAML=(
+  [p25-2x1]=transit-tracker.yaml
+  [p25-2x2]=transit-tracker-p25-2x2.yaml
+  [p2-192x64]=transit-tracker-p2.yaml
+  [p2-128x64]=transit-tracker-p2-128x64.yaml
+)
+yaml_name() {  # first `name:` in the file = the substitutions entry
+  sed -nE '0,/^[[:space:]]+name:/s/^[[:space:]]+name:[[:space:]]*"?([^"]*)"?.*/\1/p' "$FIRMWARE_REPO/firmware/$1"
+}
 
 need_site_url() {
   [ -n "$SITE_URL" ] || die "SITE_URL is empty in channel.conf. Attach the custom domain to the Pages project first (README step 3)."
@@ -344,6 +360,50 @@ cmd_status() {
   echo "releases: $(ls "$RELEASES" 2>/dev/null | tr '\n' ' ')"
 }
 
+# Test builds for the bench, never published. They report `bench-<model>-<sha>`
+# and keep the firmware's unresolvable update address, so a bench device never
+# installs anything by itself: flash it over USB or the device's web page.
+cmd_bench() {
+  [ $# -gt 0 ] || die "usage: release.sh bench <model>...  (models: ${!MODEL_YAML[*]})"
+  local model
+  for model in "$@"; do [ -n "${MODEL_YAML[$model]:-}" ] || die "unknown model '$model' (models: ${!MODEL_YAML[*]})"; done
+  repo_clean "$FIRMWARE_REPO"
+  repo_clean "$COMPONENT_REPO"
+  local fw yaml name ver src dest str sums=""
+  fw="$(git -C "$FIRMWARE_REPO" rev-parse --short=7 HEAD)"
+  for model in "$@"; do
+    yaml="${MODEL_YAML[$model]}"; name="$(yaml_name "$yaml")"; ver="bench-$model-$fw"
+    [ -n "$name" ] || die "$yaml has no name: substitution"
+    echo "== bench $model ($yaml, build dir $name) as $ver"
+    "$FIRMWARE_REPO/firmware/tools/build.sh" "$yaml" -s project_version "$ver"
+    src="$FIRMWARE_REPO/firmware/.esphome/build/$name/build"
+    dest="$HERE/bench/$model"
+    rm -rf "$dest" && mkdir -p "$dest"
+    cp "$src/firmware.factory.bin" "$dest/firmware-$ver.factory.bin"
+    cp "$src/firmware.ota.bin" "$dest/firmware-$ver.ota.bin"
+    str="$(mktemp)"; strings "$dest/firmware-$ver.ota.bin" > "$str"
+    grep -qxF "$ver" "$str" || die "$model: image does not carry version $ver (wrong build dir collected?)"
+    rm -f "$str"
+    cat > "$dest/SOURCE.txt" <<SRC
+version:        $ver (bench, unpublished, no update address)
+model:          $model ($yaml)
+built:          $(date -u +%Y-%m-%dT%H:%M:%SZ)
+firmware repo:  $(git -C "$FIRMWARE_REPO" rev-parse HEAD) ($(git -C "$FIRMWARE_REPO" rev-parse --abbrev-ref HEAD))
+component repo: $(git -C "$COMPONENT_REPO" rev-parse HEAD) ($(git -C "$COMPONENT_REPO" rev-parse --abbrev-ref HEAD))
+esphome image:  $(grep -o 'ghcr.io/esphome/esphome:[^}"]*' "$FIRMWARE_REPO/firmware/tools/build.sh" | head -1)
+factory md5:    $(md5 "$dest/firmware-$ver.factory.bin")
+ota md5:        $(md5 "$dest/firmware-$ver.ota.bin")
+SRC
+    sums+="$(md5 "$dest/firmware-$ver.ota.bin") $model"$'\n'
+  done
+  # Identical images across models mean a geometry override silently did not apply.
+  if [ -n "$(printf '%s' "$sums" | cut -d' ' -f1 | sort | uniq -d)" ]; then
+    die "two models built byte-identical images: geometry override not applied"$'\n'"$sums"
+  fi
+  echo "== bench builds in $HERE/bench/:"
+  printf '%s' "$sums" | sed 's/^/   /'
+}
+
 case "${1:-}" in
   build)    shift; cmd_build "$@" ;;
   promote)  shift; cmd_promote "$@" ;;
@@ -351,6 +411,7 @@ case "${1:-}" in
   deploy)   cmd_deploy ;;
   publish)  cmd_publish ;;
   devsite)  cmd_devsite ;;
+  bench)    shift; cmd_bench "$@" ;;
   status)   cmd_status ;;
   *) sed -n '2,10p' "$0"; exit 1 ;;
 esac

@@ -5,3 +5,5 @@ dist/
 work/
 # ttdev build output, recreated by every devsite.
 dist-dev/
+# Unpublished bench builds (release.sh bench), regenerable from commits.
+bench/

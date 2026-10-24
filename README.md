@@ -134,6 +134,29 @@ what it uploaded. `./release.sh assemble` does everything except upload.
 The configurator is rebuilt on **every** deploy from the configurator repo's
 current commit, so a configurator-only change is just `./release.sh deploy`.
 
+### Hardware models and bench builds
+
+Panel geometry is compiled in, so each hardware model is its own binary:
+
+| Model | Firmware YAML | Status |
+|---|---|---|
+| `p25-2x1` | `transit-tracker.yaml` | Released (the channel today). Also the double-sided sign: its faces are wired in parallel, so the controller sees one 2x1. |
+| `p25-2x2` | `transit-tracker-p25-2x2.yaml` | Bench |
+| `p2-192x64` | `transit-tracker-p2.yaml` | Bench. Its colour swizzle depends on chain order and panel supplier. |
+| `p2-128x64` | `transit-tracker-p2-128x64.yaml` | Bench |
+
+`./release.sh bench <model>...` builds any of them into `bench/<model>/`
+(gitignored, never published), versioned `bench-<model>-<firmware sha>`. Bench
+builds keep the firmware's unresolvable update address, so a bench device never
+updates itself: flash it over USB or from its own web page. The build refuses
+if two models come out byte-identical (a geometry override that silently did
+not apply).
+
+When a model joins the channel it gets its own manifest at
+`/firmware/<model>/manifest.json` (never a bare `2x1`/`2x2`/`2x3` path: see
+"Rules that keep devices safe"). `p25-2x1` keeps `/firmware/manifest.json`
+forever, because etr.3 and later have it compiled in.
+
 ### The development site (ttdev)
 
 https://ttdev.edmontontransitriders.org is the public release log: what stable
