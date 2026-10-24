@@ -18,6 +18,9 @@ below. Nothing depends on the machine it was built on except the paths in
 
 ## Licensing
 
+The release tooling in this repo (`release.sh`, `devsite/`, the changelogs) is
+MIT licensed; see `LICENSE`. That licence does not cover `releases/`.
+
 The firmware binaries under `releases/` are built from the three source repos
 below and carry their licences: the firmware YAML is Eastside Urbanism's
 (CC BY-NC-SA 4.0), the display component and configurator are TJ Horner's (MIT),
